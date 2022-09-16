@@ -50,7 +50,7 @@ defmodule Cypher.ExprTest do
     end
 
     test "compiles pattern path" do
-      assert compile(quote(do: %{}-[r]>%{n}), __ENV__) == %Expr{ast: %Pattern{items: [
+      assert compile(quote(do: %{} - [r] > %{n}), __ENV__) == %Expr{ast: %Pattern{items: [
         %Node{},
         :-,
         %Relation{var: :r},
@@ -58,7 +58,7 @@ defmodule Cypher.ExprTest do
         %Node{var: :n},
       ]}}
 
-      assert compile(quote(do: %User{}-%{n}), __ENV__) == %Expr{ast: %Pattern{items: [
+      assert compile(quote(do: %User{} - %{n}), __ENV__) == %Expr{ast: %Pattern{items: [
         %Node{label: User},
         :-,
         %Node{var: :n},
@@ -74,7 +74,9 @@ defmodule Cypher.ExprTest do
       assert compile(quote(do: a + 1), __ENV__) == %Expr{ast: {:+, {:variable, :a}, 1}}
       assert compile(quote(do: a < 10), __ENV__) == %Expr{ast: {:<, {:variable, :a}, 10}}
       assert compile(quote(do: a.prop = "str"), __ENV__) == %Expr{ast: {:=, {:field, :a, [:prop]}, "str"}}
-      assert compile(quote(do: length(p) > 10), __ENV__) == %Expr{ast: {:>, {:function, :length, [{:variable, :p}]}, 10}}
+      assert compile(quote(do: length(p) > 10), __ENV__) == %Expr{
+        ast: {:>, {:function, :length, [{:variable, :p}]}, 10},
+      }
       assert compile(quote(do: not is_nil(a.name)), __ENV__) == %Expr{ast: {:is_not_nil, {:field, :a, [:name]}}}
     end
 
@@ -87,11 +89,15 @@ defmodule Cypher.ExprTest do
     end
 
     test "compiles starts_with operator" do
-      assert compile(quote(do: starts_with(a.name, "John")), __ENV__) == %Expr{ast: {:starts_with, {:field, :a, [:name]}, "John"}}
+      assert compile(quote(do: starts_with(a.name, "John")), __ENV__) == %Expr{
+        ast: {:starts_with, {:field, :a, [:name]}, "John"},
+      }
     end
 
     test "compiles ends_with operator" do
-      assert compile(quote(do: ends_with(a.name, "John")), __ENV__) == %Expr{ast: {:ends_with, {:field, :a, [:name]}, "John"}}
+      assert compile(quote(do: ends_with(a.name, "John")), __ENV__) == %Expr{
+        ast: {:ends_with, {:field, :a, [:name]}, "John"},
+      }
     end
 
     # TODO: CASE operator
@@ -167,6 +173,7 @@ defmodule Cypher.ExprTest do
       assert %Expr{ast: {:<>, {:variable, :x}, 1}} |> Entity.dump() |> IO.iodata_to_binary() == "x<>1"
       assert %Expr{ast: {:<=, {:variable, :x}, 1}} |> Entity.dump() |> IO.iodata_to_binary() == "x<=1"
       assert %Expr{ast: {:>=, {:variable, :x}, 1}} |> Entity.dump() |> IO.iodata_to_binary() == "x>=1"
+      assert %Expr{ast: {:==, {:variable, :x}, 1}} |> Entity.dump() |> IO.iodata_to_binary() == "x=1"
       assert %Expr{ast: {:=~, {:variable, :x}, "a"}} |> Entity.dump() |> IO.iodata_to_binary() == "x=~'a'"
       assert %Expr{ast: {:<, {:variable, :x}, 1}} |> Entity.dump() |> IO.iodata_to_binary() == "x<1"
       assert %Expr{ast: {:>, {:variable, :x}, 1}} |> Entity.dump() |> IO.iodata_to_binary() == "x>1"

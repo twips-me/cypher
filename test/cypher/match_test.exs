@@ -1,7 +1,7 @@
 defmodule Cypher.MatchTest do
   use ExUnit.Case
 
-  alias Cypher.{Entity, Match, Node, Pattern, Query, Relation}
+  alias Cypher.{Entity, Match, Node, Pattern, Query, Relation, Where}
 
   import Match
   require Match
@@ -21,6 +21,19 @@ defmodule Cypher.MatchTest do
         var: nil,
         optional: true,
       }]}
+    end
+
+    test "reduces multiple wheres" do
+      assert match(%{a}, where: a.n > 1, where: a.x == "a") == %Query{clauses: [
+        %Match{
+          patterns: [%Pattern{items: [%Node{var: :a}]}],
+          var: nil,
+          optional: false,
+        },
+        %Where{
+          expr: {:and, {:>, {:field, :a, [:n]}, 1}, {:==, {:field, :a, [:x]}, "a"}},
+        }
+      ]}
     end
 
     test "reduces multiple matches" do

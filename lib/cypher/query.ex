@@ -3,7 +3,7 @@ defmodule Cypher.Query do
   Cypher query
   """
 
-  alias Cypher.{Match, Return}
+  alias Cypher.{Match, Return, Where}
 
   @type t :: %__MODULE__{
     clauses: [Match.t],
@@ -14,6 +14,13 @@ defmodule Cypher.Query do
   @imports [
     {Match, match: 1, match: 2, optional_match: 1, optional_match: 2},
     {Return, return: 1, return: 2},
+  ]
+
+  @compilers [
+    match: Match,
+    optional_match: Match,
+    return: Return,
+    where: Where,
   ]
 
   @spec __using__(Macro.t) :: Macro.t
@@ -27,7 +34,6 @@ defmodule Cypher.Query do
       end)
     quote do
       unquote_splicing(imports)
-      #import unquote(Match), only: [match: 2, optional_match: 2]
     end
   end
 
@@ -39,9 +45,10 @@ defmodule Cypher.Query do
     Enum.map(clauses, & compile_clause(&1, env))
   end
 
-  defp compile_clause({:match, ast}, env), do: Match.compile(ast, env)
-  defp compile_clause({:optional_match, ast}, env), do: %{Match.compile(ast, env) | optional: true}
-  defp compile_clause({:return, ast}, env), do: Return.compile(ast, env)
+  defp compile_clause({clause, ast}, env) do
+    module = Keyword.fetch!(@compilers, clause)
+    module.compile(clause, ast, env)
+  end
 end
 
 defimpl Cypher.Entity, for: Cypher.Query do

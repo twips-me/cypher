@@ -1,4 +1,6 @@
 defmodule Cypher.Helpers do
+  @moduledoc false
+
   @type kept_ast :: {:unquote, list, any}
   @type property :: {atom, atom | binary | number | kept_ast}
 

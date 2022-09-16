@@ -28,7 +28,7 @@ defmodule Cypher.Relation do
 
   @type t :: %__MODULE__{
     var: atom | nil,
-    labels: [atom | Helpers.binded_var],
+    labels: [atom | Helpers.kept_ast],
     properties: [Helpers.property],
   }
 

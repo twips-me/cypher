@@ -26,8 +26,11 @@ defmodule Cypher.Expr do
     %__MODULE__{ast: compile_ast(ast, env)}
   end
 
+  @spec unwrap(t) :: any
+  def unwrap(%__MODULE__{ast: ast}), do: ast
+
   @unary_func_ops ~w[distinct is_nil not exists]
-  @binary_func_ops ~w[starts_with ends_with contains and or = + ++ * % / pow xor in <> <= >= =~]a
+  @binary_func_ops ~w[starts_with ends_with contains and or = + ++ * % / pow xor in <> <= >= =~ ==]a
   @maybe_link_ops ~w[< > -]a
 
   defp compile_ast(x, _env) when is_number(x) or is_boolean(x) or is_binary(x), do: x
@@ -113,6 +116,9 @@ defimpl Cypher.Entity, for: Cypher.Expr do
   end
   defp dump_ast({:++, a, b}) do
     [dump_ast(a), "+=", dump_ast(b)]
+  end
+  defp dump_ast({:==, a, b}) do
+    [dump_ast(a), "=", dump_ast(b)]
   end
   defp dump_ast({:pow, a, b}) do
     [dump_ast(a), "^", dump_ast(b)]
