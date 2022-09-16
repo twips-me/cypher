@@ -117,6 +117,17 @@ defmodule Cypher.RelationTest do
     test "compiles `[a, :A, b: 1]` as a relation with binded variable `a`, label `A` and property `b` with value 1" do
       assert compile(quote(do: [a, :A, b: 1]), __ENV__) == %Relation{var: :a, labels: [:A], properties: [b: 1]}
     end
+
+    test "compiles repeat specifier" do
+      assert compile(quote(do: [_]), __ENV__) == %Relation{repeat: {nil, nil}}
+      assert compile(quote(do: [_(1..10)]), __ENV__) == %Relation{repeat: {1, 10}}
+      assert compile(quote(do: [_(_..10)]), __ENV__) == %Relation{repeat: {nil, 10}}
+      assert compile(quote(do: [_(1.._)]), __ENV__) == %Relation{repeat: {1, nil}}
+      assert compile(quote(do: [_*_]), __ENV__) == %Relation{repeat: {nil, nil}}
+      assert compile(quote(do: [_*_(1..10)]), __ENV__) == %Relation{repeat: {1, 10}}
+      assert compile(quote(do: [_*_(_..10)]), __ENV__) == %Relation{repeat: {nil, 10}}
+      assert compile(quote(do: [_*_(1.._)]), __ENV__) == %Relation{repeat: {1, nil}}
+    end
   end
 
   describe "dump/2" do
@@ -166,6 +177,32 @@ defmodule Cypher.RelationTest do
         |> Entity.dump()
         |> IO.iodata_to_binary()
       assert result == "[a:A{x:true}]"
+    end
+
+    test "dumps relation with ranges" do
+      result =
+        %Relation{var: :a, labels: [:A], properties: [x: true], repeat: {nil, nil}}
+        |> Entity.dump()
+        |> IO.iodata_to_binary()
+      assert result == "[a:A{x:true}*]"
+
+      result =
+        %Relation{var: :a, labels: [:A], properties: [x: true], repeat: {1, 10}}
+        |> Entity.dump()
+        |> IO.iodata_to_binary()
+      assert result == "[a:A{x:true}*1..10]"
+
+      result =
+        %Relation{var: :a, labels: [:A], properties: [x: true], repeat: {1, nil}}
+        |> Entity.dump()
+        |> IO.iodata_to_binary()
+      assert result == "[a:A{x:true}*1..]"
+
+      result =
+        %Relation{var: :a, labels: [:A], properties: [x: true], repeat: {nil, 10}}
+        |> Entity.dump()
+        |> IO.iodata_to_binary()
+      assert result == "[a:A{x:true}*..10]"
     end
   end
 end

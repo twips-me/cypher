@@ -43,7 +43,9 @@ defmodule Cypher.Expr do
     end
     Enum.into(fields, %{})
   end
-  defp compile_ast({var, _, mod}, _env) when is_atom(var) and is_atom(mod), do: {:variable, var}
+  defp compile_ast({:_, _, m}, _env) when is_atom(m), do: :*
+  defp compile_ast({:*, _, [{:_, _, m}, {:_, _, m}]}, _env) when is_atom(m), do: :*
+  defp compile_ast({var, _, m}, _env) when is_atom(var) and is_atom(m), do: {:variable, var}
   defp compile_ast({:exists, _, [ast]}, _env) do
     {:exists, keep_ast(ast)}
   end
@@ -100,6 +102,7 @@ defimpl Cypher.Entity, for: Cypher.Expr do
   @two_sides_spaced_ops ~w[and or xor in]a
 
   defp dump_ast(n) when is_number(n) or is_boolean(n) or is_binary(n), do: dump_literal(n)
+  defp dump_ast(:*), do: "*"
   defp dump_ast({:variable, var}), do: to_string(var)
   defp dump_ast({:field, var, fields}), do: [var | fields] |> Enum.map(&to_string/1) |> Enum.intersperse(".")
   defp dump_ast({:dynamic_field, var, ast}) do

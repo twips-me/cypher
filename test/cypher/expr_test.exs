@@ -25,6 +25,11 @@ defmodule Cypher.ExprTest do
       assert compile(quote(do: false), __ENV__) == %Expr{ast: false}
     end
 
+    test "compiles asterisk" do
+      assert compile(quote(do: _), __ENV__) == %Expr{ast: :*}
+      assert compile(quote(do: _*_), __ENV__) == %Expr{ast: :*}
+    end
+
     test "compiles variables" do
       assert compile(quote(do: a), __ENV__) == %Expr{ast: {:variable, :a}}
     end
@@ -117,6 +122,10 @@ defmodule Cypher.ExprTest do
     test "dumps booleans" do
       assert %Expr{ast: true} |> Entity.dump() |> IO.iodata_to_binary() == "true"
       assert %Expr{ast: false} |> Entity.dump() |> IO.iodata_to_binary() == "false"
+    end
+
+    test "dumps asteris" do
+      assert %Expr{ast: :*} |> Entity.dump() |> IO.iodata_to_binary() == "*"
     end
 
     test "dumps cypher variables" do
