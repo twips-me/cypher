@@ -21,7 +21,7 @@ defmodule Cypher.Delete do
   end
 
   defp compile_ast(ast, env) when is_list(ast) do
-    Enum.map(ast, &Expr.compile(&1, env))
+    Enum.map(ast, & Expr.compile(&1, env))
   end
   defp compile_ast(ast, env), do: compile_ast([ast], env)
 end
