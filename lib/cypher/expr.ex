@@ -22,8 +22,10 @@ defmodule Cypher.Expr do
   defstruct ast: nil
 
   @spec compile(Macro.t, Macro.Env.t) :: t
-  def compile(ast, env) do
-    %__MODULE__{ast: compile_ast(ast, env)}
+  @spec compile(Macro.t, Macro.Env.t, Keyword.t) :: t
+  def compile(ast, env, opts \\ []) do
+    opts = Keyword.put_new(opts, :binding_compiler, &bind_var/1)
+    %__MODULE__{ast: compile_ast(ast, env, opts)}
   end
 
   @spec unwrap(t) :: any
@@ -33,48 +35,52 @@ defmodule Cypher.Expr do
   @binary_func_ops ~w[starts_with ends_with contains and or = + ++ * % / pow xor in <> <= >= =~ ==]a
   @maybe_link_ops ~w[< > -]a
 
-  defp compile_ast(x, _env) when is_number(x) or is_boolean(x) or is_binary(x), do: x
-  defp compile_ast({:-, _, [n]}, _env) when is_number(n), do: -n
-  defp compile_ast({:+, _, [n]}, _env) when is_number(n), do: n
-  defp compile_ast({:__block__, _, [ast]}, env), do: compile_ast(ast, env)
-  defp compile_ast({:%, _, [label, {:%{}, _, fields}]}, env) when is_list(fields) do
+  defp compile_ast(x, _env, _opts) when is_number(x) or is_boolean(x) or is_binary(x), do: x
+  defp compile_ast({:-, _, [n]}, _env, _opts) when is_number(n), do: -n
+  defp compile_ast({:+, _, [n]}, _env, _opts) when is_number(n), do: n
+  defp compile_ast({:__block__, _, [ast]}, env, opts), do: compile_ast(ast, env, opts)
+  defp compile_ast({:%, _, [label, {:%{}, _, fields}]}, env, _opts) when is_list(fields) do
     if Macro.expand(label, env) != Cypher.Map or not Keyword.keyword?(fields) do
       error("Invalid node usage in expression", env)
     end
     Enum.into(fields, %{})
   end
-  defp compile_ast({:_, _, m}, _env) when is_atom(m), do: :*
-  defp compile_ast({:*, _, [{:_, _, m}, {:_, _, m}]}, _env) when is_atom(m), do: :*
-  defp compile_ast({var, _, m}, _env) when is_atom(var) and is_atom(m), do: {:variable, var}
-  defp compile_ast({:exists, _, [ast]}, _env) do
+  defp compile_ast({:_, _, m}, _env, _opts) when is_atom(m), do: :*
+  defp compile_ast({:*, _, [{:_, _, m}, {:_, _, m}]}, _env, _opts) when is_atom(m), do: :*
+  defp compile_ast({var, _, m}, _env, _opts) when is_atom(var) and is_atom(m), do: {:variable, var}
+  defp compile_ast({:exists, _, [ast]}, _env, _opts) do
     {:exists, keep_ast(ast)}
   end
-  defp compile_ast({:not, _, [{:is_nil, _, [ast]}]}, env) do
-    {:is_not_nil, compile_ast(ast, env)}
+  defp compile_ast({:not, _, [{:is_nil, _, [ast]}]}, env, opts) do
+    {:is_not_nil, compile_ast(ast, env, opts)}
   end
-  defp compile_ast({op, _, [ast]}, env) when op in @unary_func_ops do
-    {op, compile_ast(ast, env)}
+  defp compile_ast({op, _, [ast]}, env, opts) when op in @unary_func_ops do
+    {op, compile_ast(ast, env, opts)}
   end
-  defp compile_ast({op, _, [a, b]} = ast, env) when op in @maybe_link_ops do
+  defp compile_ast({op, _, [a, b]} = ast, env, opts) when op in @maybe_link_ops do
     if is_node?(a, env) or is_node?(b, env) do
       Pattern.compile(ast, env)
     else
-      {op, compile_ast(a, env), compile_ast(b, env)}
+      {op, compile_ast(a, env, opts), compile_ast(b, env, opts)}
     end
   end
-  defp compile_ast({op, _, [a, b]}, env) when op in @binary_func_ops do
-    {op, compile_ast(a, env), compile_ast(b, env)}
+  defp compile_ast({op, _, [a, b]}, env, opts) when op in @binary_func_ops do
+    {op, compile_ast(a, env, opts), compile_ast(b, env, opts)}
   end
-  defp compile_ast({fun, _, args}, env) when is_atom(fun) and is_list(args) do
-    {:function, fun, Enum.map(args, & compile_ast(&1, env))}
+  defp compile_ast({:^, _, [{var, _, mod} = ast]}, _env, opts) when is_atom(var) and is_atom(mod) do
+    binding_compiler = Keyword.fetch!(opts, :binding_compiler)
+    binding_compiler.(ast)
   end
-  defp compile_ast({{:., _, [Access, :get]}, _, [{var, _, mod}, ast]}, env) when is_atom(var) and is_atom(mod) do
-    {:dynamic_field, var, compile_ast(ast, env)}
+  defp compile_ast({fun, _, args}, env, opts) when is_atom(fun) and is_list(args) do
+    {:function, fun, Enum.map(args, & compile_ast(&1, env, opts))}
   end
-  defp compile_ast({{:., _, [_, _]}, _, _} = ast, _env) do
+  defp compile_ast({{:., _, [Access, :get]}, _, [{var, _, mod}, ast]}, env, opts) when is_atom(var) and is_atom(mod) do
+    {:dynamic_field, var, compile_ast(ast, env, opts)}
+  end
+  defp compile_ast({{:., _, [_, _]}, _, _} = ast, _env, _opts) do
     compile_field_access(ast, [])
   end
-  defp compile_ast(ast, env) when is_list(ast), do: Enum.map(ast, & compile_ast(&1, env))
+  defp compile_ast(ast, env, opts) when is_list(ast), do: Enum.map(ast, & compile_ast(&1, env, opts))
 
   defp compile_field_access({{:., _, [a, b]}, _, _}, path) when is_atom(b) do
     compile_field_access(a, [b | path])
