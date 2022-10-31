@@ -37,6 +37,15 @@ defmodule Cypher.Helpers do
     keep_ast(ast)
   end
 
+  @spec field_binding_compiler(Macro.t) :: tuple
+  def field_binding_compiler(ast) do
+    {:field, {:unquote, [], [quote(do: unquote(__MODULE__).cast_field(unquote(ast)))]}, []}
+  end
+
+  @spec cast_field(binary) :: binary
+  def cast_field(field) when is_binary(field) and byte_size(field) > 0, do: field
+  def cast_field(_field), do: raise "wrong binding field type"
+
   defp compile_property({key, {:^, _, [{var, _, mod} = ast]}}, _env) when is_atom(var) and is_atom(mod) do
     {key, bind_var(ast)}
   end

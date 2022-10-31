@@ -3,7 +3,7 @@ defmodule Cypher.Query do
   Cypher query
   """
 
-  alias Cypher.{Match, Return, Where}
+  alias Cypher.{Create, Delete, Limit, Match, OrderBy, Return, Skip, Where}
 
   @type t :: %__MODULE__{
     clauses: [Match.t],
@@ -12,14 +12,20 @@ defmodule Cypher.Query do
   defstruct clauses: []
 
   @imports [
+    {Create, create: 1, create: 2},
     {Match, match: 1, match: 2, optional_match: 1, optional_match: 2},
-    {Return, return: 1, return: 2},
   ]
 
   @compilers [
+    create: Create,
+    delete: Delete,
+    detach_delete: Delete,
+    limit: Limit,
     match: Match,
     optional_match: Match,
+    order_by: OrderBy,
     return: Return,
+    skip: Skip,
     where: Where,
   ]
 
@@ -56,6 +62,8 @@ defimpl Cypher.Entity, for: Cypher.Query do
 
   @spec dump(Query.t) :: iodata
   def dump(%Query{clauses: clauses}) do
-    Enum.map(clauses, &Entity.dump/1)
+    clauses
+    |> Enum.map(&Entity.dump/1)
+    |> Enum.intersperse(" ")
   end
 end

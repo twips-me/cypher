@@ -105,6 +105,10 @@ defmodule Cypher.ExprTest do
       }
     end
 
+    test "compile binding oeprator" do
+      assert compile(quote(do: ^var), __ENV__) == %Cypher.Expr{ast: {:unquote, [], [{:var, [], __MODULE__}]}}
+    end
+
     # TODO: CASE operator
   end
 
